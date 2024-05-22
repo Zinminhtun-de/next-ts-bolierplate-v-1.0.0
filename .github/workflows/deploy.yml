@@ -1,0 +1,105 @@
+name: AWS Deployment
+on:
+  push:
+    branches:
+      - develop
+      - devops
+      - production
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup AWS ECR
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1 #${{secrets.AWS_REGION}}
+
+      - name: Login to Amazon ECR
+        id: login-pf-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push the tagged docker image to Amazon ECR
+        env:
+          ECR: ${{ steps.login-pf-aws-ecr.outputs.registry }}
+          REPO: aio
+          BRANCH_NAME: ${{ github.ref_name }} # Branch name
+          
+        run: |
+          IMAGE_TAG="AIO-User-V2-$BRANCH_NAME" 
+          touch .env
+
+          if [[ "${{github.ref}}" == "refs/heads/develop" ]]; then
+            echo "${{ secrets.DEVELOP_ENV_STAGE }}" > .env
+            
+          elif [[ "${{github.ref}}" == "refs/heads/production" ]]; then
+            echo "${{ secrets.PRODUCTION_ENV_STAGE }}" > .env
+          fi
+          docker build -t $ECR/$REPO:$IMAGE_TAG .
+          docker push $ECR/$REPO:$IMAGE_TAG
+
+
+########################
+## Only Dev & Staging ##
+########################
+
+  deploy_to_EC2:
+    name: deploy_to_EC2
+    needs: build
+    runs-on: ubuntu-latest
+    if:  github.ref == 'refs/heads/develop' 
+    steps:
+      - name: Deploy to Development
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.DEV_EC2_IP }}
+          username: ${{ secrets.DEV_EC2_USER }}
+          key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            cd /home/ubuntu/devops/
+            bash dev-deploy.sh
+
+
+######################
+## Only Production  ##
+######################
+
+  # deploy_to_production:
+  #   name: deploy_to_production
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/production'
+  #   steps:
+
+  #     - name: Setup AWS Credentails
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{secrets.AWS_REGION}}
+
+  #     - name: Download task definition
+  #       run: aws ecs describe-task-definition --region ap-southeast-1 --task-definition Prod-User --query taskDefinition > task-definition.json
+
+  #     - name: Fill in the new image ID in the Amazon ECS task definition
+  #       id: task-def
+  #       uses: aws-actions/amazon-ecs-render-task-definition@v1
+  #       with:
+  #         task-definition: task-definition.json
+  #         container-name: user
+  #         image: ${{ secrets.AWS_ECR }}:aio-user-side-fe-production
+
+  #     - name: Deploy ECS task definition
+  #       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+  #       with:
+  #         task-definition: ${{ steps.task-def.outputs.task-definition }}
+  #         service: Prod-User
+  #         cluster: AIO-ECS-Production
+  #         wait-for-service-stability: false

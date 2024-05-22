@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  font-weight: 500;
+}
+
+@layer utilities {
+  .card {
+    @apply border border-green-550 bg-green-50 rounded-[5px] px-[18px] py-3 cursor-pointer;
+  }
+  .gradient-btn {
+    @apply bg-gradient-to-b from-info-50 to-info-100 text-white;
+  }
+  .gradient-secondary-btn {
+    @apply bg-gradient-to-b from-grey-50 to-yellow-200 text-black;
+  }
+  .second {
+    @apply bg-gradient-to-b from-[#FFF8E0] to-[#A5A5A5] text-black;
+  }
+  .first {
+    @apply bg-gradient-to-b from-[#FFF987] to-[#D69C17] text-black;
+  }
+  .third {
+    @apply bg-gradient-to-b from-[#2489FF] to-[#2489FF] text-black;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  /* .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  } */
+  /* Hide scrollbar for IE, Edge and Firefox */
+   /* .no-scrollbar {
+    -ms-overflow-style: none; 
+    scrollbar-width: none; 
+  }  */
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
